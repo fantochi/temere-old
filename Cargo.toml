@@ -17,3 +17,4 @@ log = "0.4.14"
 actix-files = "0.5.0"
 dotenv = "0.15.0"
 diesel = { version = "1.4.7", features = ["chrono", "postgres", "r2d2", "uuidv07", "serde_json"] }
+num_cpus = "1.13.0"

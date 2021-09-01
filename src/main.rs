@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let server = app::server::Server::new().start();
-    let database = SyncArbiter::start(5, | | {database::DbExecutor::new()?});
+    let database = SyncArbiter::start(num_cpus::get(), | | {database::DbExecutor::new()?});
 
     HttpServer::new(move || {
 
