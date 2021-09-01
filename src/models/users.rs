@@ -1,7 +1,6 @@
 use chrono::NaiveDateTime;
-use uuid::Uuid;
 
-use crate::schema::users::*;
+use crate::schema::users;
 
 #[derive(Debug, Queryable, Identifiable)]
 pub struct User {

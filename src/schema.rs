@@ -9,10 +9,21 @@ table! {
 table! {
     chats (id) {
         id -> Uuid,
+        lobby_id -> Uuid,
         message_counter -> Int4,
-        status -> Chat_status,
+        status -> Varchar,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+    }
+}
+
+table! {
+    lobbys (id) {
+        id -> Uuid,
+        name -> Varchar,
+        description -> Varchar,
+        nsfw -> Bool,
+        enabled -> Bool,
     }
 }
 
@@ -23,8 +34,11 @@ table! {
     }
 }
 
+joinable!(chats -> lobbys (lobby_id));
+
 allow_tables_to_appear_in_same_query!(
     blocks,
     chats,
+    lobbys,
     users,
 );

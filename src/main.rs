@@ -5,37 +5,37 @@ extern crate log;
 #[macro_use]
 extern crate diesel;
 
-mod app;
-mod models;
-mod schema;
-mod database;
-mod lib;
+pub mod schema;
+pub mod app;
+pub mod models;
+pub mod database;
 
 use actix::{Actor, SyncArbiter};
-use actix_web::{web, App, HttpResponse, HttpServer};
-use diesel::prelude::*;
-
+use actix_web::{App, HttpResponse, HttpServer, web::{self, Data}};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
 
-    std::env::set_var("RUST_LOG", "conduit=debug,actix_web=info");
+    std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 
+    let database_pool = database::new_pool().unwrap();
+    let database = SyncArbiter::start(1, move | | {database::DbExecutor::new(database_pool.clone())});
+
     let server = app::server::Server::new().start();
-    let database = SyncArbiter::start(num_cpus::get(), | | {database::DbExecutor::new()?});
 
     HttpServer::new(move || {
-
-        let state = lib::AppState {
-            database,
-            server
+        let state = app::AppState {
+            database: database.clone(),
+            server: server.clone()
         };
 
         App::new()
             .route("/", web::get().to(|| HttpResponse::Ok()))
-            .data(state)
+            .configure(app::routes::config)
+            .app_data(Data::new(state.clone()))
+            .wrap(actix_web::middleware::Logger::default())
     })
     .bind("127.0.0.1:8080")?
     .run()

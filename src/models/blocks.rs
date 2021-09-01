@@ -1,7 +1,4 @@
-use chrono::NaiveDateTime;
-use uuid::Uuid;
-
-use crate::schema::blocks::*;
+use crate::schema::blocks;
 
 #[derive(Debug, Queryable, Identifiable)]
 pub struct Block {

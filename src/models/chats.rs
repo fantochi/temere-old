@@ -1,10 +1,10 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::schema::chats::*;
+use crate::schema::chats;
 
 #[derive(Debug, Queryable, Identifiable)]
-pub struct Block {
+pub struct Chat {
     pub id: Uuid,
     pub message_counter: i32,
     pub status: String,
@@ -14,7 +14,7 @@ pub struct Block {
 
 #[derive(Debug, Insertable)]
 #[table_name = "chats"]
-pub struct NewBlock {
+pub struct NewChat {
     pub id: Uuid,
     pub message_counter: i32,
     pub status: String
