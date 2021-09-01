@@ -1,4 +1,4 @@
-CREATE TABLE drops (
+CREATE TABLE blocks (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
     CONSTRAINT fk_user

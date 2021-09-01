@@ -2,13 +2,19 @@
 extern crate serde_json;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate diesel;
 
 mod app;
+mod models;
+mod schema;
 mod database;
 mod lib;
 
 use actix::{Actor, SyncArbiter};
 use actix_web::{web, App, HttpResponse, HttpServer};
+use diesel::prelude::*;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
