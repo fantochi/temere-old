@@ -1,7 +1,8 @@
 use actix_web::{HttpRequest, HttpResponse, get, web::{self, Data, Payload}};
 use serde::Deserialize;
+use uuid::Uuid;
 
-use crate::database;
+use crate::{app::{client, server}, database};
 
 use super::super::AppState;
 
@@ -22,28 +23,38 @@ pub async fn list(
     }
 }
 
-#[derive(Deserialize)]
-pub struct Credentials {
-    fingerprint: String
-}
 
 #[get("/lobby/{lobby_id}/{fingerprint}")]
 pub async fn join(
     req: HttpRequest,
     stream: Payload,
     state: Data<AppState>,
+    data: web::Path<(String, String)>
 ) -> Result<HttpResponse, actix_web::Error> {
 
     let state = state.get_ref().clone();
+    let data = data.clone();
+
+    let chat_id = data.0.parse::<Uuid>();
+    let fingerprint = data.1;
     
-    
+    if let Err(_) = chat_id {
+        return Err(actix_web::error::ErrorBadRequest("invalid lobby id!")); 
+    }
 
-    // let ws = Client::new(
-    //     srv.get_ref().clone(),
-    // );
+    let chat_id = chat_id.unwrap();
 
-    // let resp = ws::start(ws, &req, stream)?;
-    // Ok(resp)
+    let lobby_addr = state.server.send(server::GetLobbyAddr {
+        id: chat_id.clone()
+    }).await.unwrap();
 
-    todo!()
+    match lobby_addr {
+        None => return Err(actix_web::error::ErrorBadRequest("Lobby id not exists!")),
+        Some(addr) => {
+            let client = client::Client::new(fingerprint, addr);
+            let resp = actix_web_actors::ws::start(client, &req, stream)?;
+
+            return Ok(resp);
+        }
+    }
 }

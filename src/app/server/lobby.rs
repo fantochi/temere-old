@@ -8,3 +8,11 @@ pub struct Lobby {
 impl Actor for Lobby {
     type Context = Context<Self>;
 }
+
+impl Lobby {
+    pub fn new() -> Self {
+        Self {
+            chats: HashMap::new()
+        }
+    }
+}

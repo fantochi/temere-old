@@ -25,6 +25,8 @@ async fn main() -> std::io::Result<()> {
 
     let server = app::server::Server::new().start();
 
+    let _ = server.send(app::server::LoadLobbies(database.clone())).await;
+
     HttpServer::new(move || {
         let state = app::AppState {
             database: database.clone(),
