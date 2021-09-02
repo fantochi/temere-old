@@ -1,4 +1,6 @@
-use actix::Addr;
+use actix::{Addr, Message};
+use serde_json::Value;
+use serde::{Deserialize, Serialize};
 
 use crate::database;
 
@@ -10,4 +12,14 @@ pub mod client;
 pub struct AppState {
     pub database: Addr<database::DbExecutor>,
     pub server: Addr<server::Server>
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ClientMessage {
+    pub event: String,
+    pub data: Value
+}
+
+impl Message for ClientMessage {
+    type Result = ();
 }

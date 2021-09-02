@@ -3,11 +3,13 @@ pub mod lobby;
 
 use std::collections::HashMap;
 use actix::{Actor, ActorFuture, Addr, Context, Handler, Message, WrapFuture};
-use actix::{fut,  ActorContext, ContextFutureSpawner};
+use actix::{fut,  ContextFutureSpawner};
 
 use uuid::Uuid;
 
 use crate::database::{self, DbExecutor};
+
+use super::ClientMessage;
 
 pub struct Server {
     lobbys: HashMap<Uuid, Addr<lobby::Lobby>>
@@ -41,7 +43,7 @@ impl Message for GetLobbyAddr {
 impl Handler<GetLobbyAddr> for Server {
     type Result = Option<Addr<lobby::Lobby>>;
 
-    fn handle(&mut self, msg: GetLobbyAddr, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: GetLobbyAddr, _ctx: &mut Self::Context) -> Self::Result {
         
         let addr= self.lobbys.get(&msg.id);
 
@@ -69,7 +71,7 @@ impl Handler<LoadLobbies> for Server {
         
         db_executor.send(database::lobby::GetLobbyList)
             .into_actor(self)
-            .then(|res, server, ctx| {
+            .then(|res, server, _ctx| {
                 if let Ok(Ok(list)) = res {
                     for lobby in list {
                         server.lobbys.insert(lobby.id, lobby::Lobby::new().start());
@@ -80,3 +82,4 @@ impl Handler<LoadLobbies> for Server {
             .wait(ctx)
     }
 }
+
