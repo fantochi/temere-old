@@ -9,8 +9,6 @@ use uuid::Uuid;
 
 use crate::database::{self, DbExecutor};
 
-use super::ClientMessage;
-
 pub struct Server {
     lobbys: HashMap<Uuid, Addr<lobby::Lobby>>
 }
@@ -27,11 +25,11 @@ impl Actor for Server {
     type Context = Context<Self>;
 }
 
-//========================
-//       ACTIONS
-//========================
+/* -------------------------------------------------------------------------- */
+/*                                   ACTIONS                                  */
+/* -------------------------------------------------------------------------- */
 
-// Get lobby addr
+// Get Actor Addr from Lobby
 pub struct GetLobbyAddr{
     pub id: Uuid
 }
@@ -54,8 +52,8 @@ impl Handler<GetLobbyAddr> for Server {
     }
 }
 
-// Scan lobbyes from database
-
+// Scan lobbies from database
+// TODO: Make thread to periodical scan, to open or close lobbies according to the database
 pub struct LoadLobbies(pub Addr<DbExecutor>);
 
 impl Message for LoadLobbies {

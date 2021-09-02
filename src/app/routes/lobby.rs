@@ -39,7 +39,7 @@ pub async fn join(
     let fingerprint = data.1;
     
     if let Err(_) = chat_id {
-        return Err(actix_web::error::ErrorBadRequest("invalid lobby id!")); 
+        return Err(actix_web::error::ErrorBadRequest("invalid lobby id!"));
     }
 
     let chat_id = chat_id.unwrap();

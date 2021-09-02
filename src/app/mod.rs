@@ -16,6 +16,7 @@ pub struct AppState {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ClientMessage {
+    pub fingerprint: String,
     pub event: String,
     pub data: Value
 }
