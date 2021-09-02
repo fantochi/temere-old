@@ -10,7 +10,7 @@ pub mod app;
 pub mod models;
 pub mod database;
 
-use actix::{Actor, Addr, SyncArbiter};
+use actix::{Actor, SyncArbiter};
 use actix_web::{App, HttpResponse, HttpServer, web::{self, Data}};
 
 #[actix_web::main]
@@ -45,10 +45,10 @@ async fn main() -> std::io::Result<()> {
 }
 
 // TODO: This not wokr
-async fn cron(server_addr: Addr<app::server::Server>, database_addr: Addr<database::DbExecutor>) {
-    loop{
-        info!("TO AQUIIII");
-        server_addr.do_send(app::server::LoadLobbies(database_addr.clone()));
-        actix_rt::time::sleep(std::time::Duration::from_secs(5)).await
-    }
-}
+// async fn cron(server_addr: Addr<app::server::Server>, database_addr: Addr<database::DbExecutor>) {
+//     loop{
+//         info!("TO AQUIIII");
+//         server_addr.do_send(app::server::LoadLobbies(database_addr.clone()));
+//         actix_rt::time::sleep(std::time::Duration::from_secs(5)).await
+//     }
+// }

@@ -138,7 +138,7 @@ impl Message for Enabled {
 impl Handler<Enabled> for Lobby {
     type Result = ();
 
-    fn handle(&mut self, msg: Enabled, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Enabled, _ctx: &mut Self::Context) -> Self::Result {
         self.enabled = msg.0;
 
         if msg.0 == false {

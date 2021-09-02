@@ -10,15 +10,13 @@ use uuid::Uuid;
 use crate::database::{self, DbExecutor};
 
 pub struct Server {
-    lobbys: HashMap<Uuid, Addr<lobby::Lobby>>,
-    watcher: String,
+    lobbys: HashMap<Uuid, Addr<lobby::Lobby>>
 }
 
 impl Server {
     pub fn new() -> Self {
         Self {
-            lobbys: HashMap::new(),
-            watcher: String::default()
+            lobbys: HashMap::new()
         }
     }
 }
