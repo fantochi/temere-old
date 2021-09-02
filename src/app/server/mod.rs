@@ -10,19 +10,21 @@ use uuid::Uuid;
 use crate::database::{self, DbExecutor};
 
 pub struct Server {
-    lobbys: HashMap<Uuid, Addr<lobby::Lobby>>
+    lobbys: HashMap<Uuid, Addr<lobby::Lobby>>,
+    watcher: String,
 }
 
 impl Server {
     pub fn new() -> Self {
         Self {
-            lobbys: HashMap::new()
+            lobbys: HashMap::new(),
+            watcher: String::default()
         }
     }
 }
 
 impl Actor for Server {
-    type Context = Context<Self>;
+    type Context = Context<Self>;    
 }
 
 /* -------------------------------------------------------------------------- */
@@ -64,20 +66,25 @@ impl Handler<LoadLobbies> for Server {
     type Result = ();
 
     fn handle(&mut self, msg: LoadLobbies, ctx: &mut Self::Context) -> Self::Result {
-        let db_executor = msg.0.clone();
-
-        
+        info!("Loading lobbies...");
+        let db_executor = msg.0.clone();        
         db_executor.send(database::lobby::GetLobbyList)
             .into_actor(self)
             .then(|res, server, _ctx| {
                 if let Ok(Ok(list)) = res {
                     for lobby in list {
-                        server.lobbys.insert(lobby.id, lobby::Lobby::new().start());
+                        if let Some(lb) = server.lobbys.get_mut(&lobby.id) {
+                            lb.do_send(lobby::Enabled(lobby.enabled));
+                        } else {
+                            server.lobbys.insert(lobby.id, lobby::Lobby::new(lobby.enabled).start());
+                        }
                     }          
                 }
                 fut::ready(())
             })
-            .wait(ctx)
+            .wait(ctx);
+
+        info!("Lobbies OK!");
     }
 }
 

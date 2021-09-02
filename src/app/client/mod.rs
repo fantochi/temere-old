@@ -150,7 +150,17 @@ impl Handler<ClientMessage> for Client {
     type Result = ();
 
     fn handle(&mut self, msg: ClientMessage, ctx: &mut Self::Context) -> Self::Result {
-        // TODO: Make a match validator to avoid wrong messages from chat or lobby
-        ctx.text(json!(msg).to_string());
+        match msg.event.clone().as_str() {
+            "lobby-closed" => {
+                match self.chat_addr {
+                    Some(_) => (),
+                    None => {
+                        ctx.text(json!(msg).to_string());
+                        ctx.stop();
+                    }
+                }
+            },
+            _ => ctx.text(json!(msg).to_string())
+        }
     }
 }

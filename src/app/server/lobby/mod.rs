@@ -11,6 +11,7 @@ use self::session::{Session, SessionState};
 use super::chat::Chat;
 
 pub struct Lobby {
+    enabled: bool,
     chats: HashMap<Uuid, Addr<Chat>>,
     sessions: HashMap<String, session::Session>
 }
@@ -20,8 +21,9 @@ impl Actor for Lobby {
 }
 
 impl Lobby {
-    pub fn new() -> Self {
+    pub fn new(enabled: bool) -> Self {
         Self {
+            enabled,
             chats: HashMap::new(),
             sessions: HashMap::new()
         }
@@ -38,6 +40,14 @@ impl Handler<ClientMessage> for Lobby {
 
     fn handle(&mut self, msg: ClientMessage, _ctx: &mut Self::Context) -> Self::Result {
 
+        if self.enabled.clone() == false {
+            for (fingerprint, session) in self.sessions.iter() {
+                session.get_addr().do_send(ClientMessage { fingerprint: fingerprint.clone(), event: String::from("lobby-closed"), data: json!({}) });
+            }
+            return;
+        }
+
+        // Message Events
         match msg.event.as_str() {
             "look" => {
                 // TODO: Ignore if myself aready looking
@@ -106,9 +116,35 @@ impl Handler<Connect> for Lobby {
     type Result = Result<(), ()>;
     
     fn handle(&mut self, msg: Connect, _: &mut Self::Context) -> Self::Result {
+
+        if self.enabled == false {
+            return Err(());
+        }
+
         match self.sessions.insert(msg.fingerprint, Session::new(msg.conn_addr)) {
             Some(_) => Err(()),
             None => Ok(())
+        }
+    }
+}
+
+
+pub struct Enabled(pub bool);
+
+impl Message for Enabled {
+    type Result = ();
+}
+
+impl Handler<Enabled> for Lobby {
+    type Result = ();
+
+    fn handle(&mut self, msg: Enabled, ctx: &mut Self::Context) -> Self::Result {
+        self.enabled = msg.0;
+
+        if msg.0 == false {
+            for (fingerprint, session) in self.sessions.iter() {
+                session.get_addr().do_send(ClientMessage { fingerprint: fingerprint.clone(), event: String::from("lobby-closed"), data: json!({}) });
+            }
         }
     }
 }
