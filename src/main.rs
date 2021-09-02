@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
     let server = app::server::Server::new().start();
     let _ = server.send(app::server::LoadLobbies(database.clone())).await;
 
-    cron(server.clone(),database.clone());
+    //cron(server.clone(),database.clone());
 
     HttpServer::new(move || {
         let state = app::AppState {
@@ -44,6 +44,7 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 
+// TODO: This not wokr
 async fn cron(server_addr: Addr<app::server::Server>, database_addr: Addr<database::DbExecutor>) {
     loop{
         info!("TO AQUIIII");
