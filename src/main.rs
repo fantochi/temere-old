@@ -11,7 +11,8 @@ pub mod models;
 pub mod database;
 
 use actix::{Actor, SyncArbiter};
-use actix_web::{App, HttpResponse, HttpServer, web::{self, Data}};
+use actix_web::{App, HttpResponse, HttpServer, web::{self, Data}, http};
+use actix_cors::Cors;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -33,13 +34,24 @@ async fn main() -> std::io::Result<()> {
             server: server.clone()
         };
 
+        
+        let cors = Cors::default()
+            .allowed_origin("http://localhost:3000")
+            .allow_any_origin()
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+            .allowed_header(http::header::CONTENT_TYPE)
+            .max_age(3600);
+
+
         App::new()
             .route("/", web::get().to(|| HttpResponse::Ok()))
             .configure(app::routes::config)
             .app_data(Data::new(state.clone()))
             .wrap(actix_web::middleware::Logger::default())
+            .wrap(cors)
     })
-    .bind("127.0.0.1:8080")?
+    .bind("192.168.50.219:8080")?
     .run()
     .await
 }

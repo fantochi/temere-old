@@ -26,3 +26,4 @@ diesel = { version = "1.4.7", features = [
 num_cpus = "1.13.0"
 chrono = "0.4.19"
 actix-rt = "2.2.0"
+actix-cors = "0.5.4"
