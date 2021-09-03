@@ -128,7 +128,28 @@ impl Handler<Connect> for Lobby {
     }
 }
 
+// Disconnect Session
+pub struct Disconnect(pub String);
 
+impl Message for Disconnect {
+    type Result = ();
+}
+
+impl Handler<Disconnect> for Lobby {
+    type Result = ();
+
+    fn handle(&mut self, msg: Disconnect, ctx: &mut Self::Context) -> Self::Result {
+        info!("User disconnected: {}", msg.0.clone());
+        match self.sessions.remove_entry(&msg.0) {
+            Some(session) => {
+                info!("Usuario retirado da lista de sessoes!")
+            },
+            _ => ()
+        }
+    }
+}
+
+// Enabled server or no;
 pub struct Enabled(pub bool);
 
 impl Message for Enabled {

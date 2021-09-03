@@ -23,8 +23,28 @@ pub async fn list(
     }
 }
 
+#[get("/lobby/{lobby_id}")]
+pub async fn get_lobby(
+    req: HttpRequest,
+    stream: Payload,
+    state: Data<AppState>,
+    data: web::Path<String>
+) -> Result<HttpResponse, actix_web::Error> {
 
-#[get("/lobby/{lobby_id}/{fingerprint}")]
+    let lobby_id = data.parse::<Uuid>().unwrap();
+    
+    let state = state.get_ref().clone();
+
+    let db_result = state.database.send(database::lobby::GetLobby(lobby_id)).await;
+
+    match db_result {
+        Ok(result) => Ok(HttpResponse::Ok().body(json!(result))),
+        Err(e) => Err(actix_web::error::ErrorInternalServerError("Error on quary"))
+    }
+}
+
+
+#[get("/ws/{lobby_id}/{fingerprint}")]
 pub async fn join(
     req: HttpRequest,
     stream: Payload,

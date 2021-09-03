@@ -1,9 +1,14 @@
 use actix::{Handler, Message};
 use diesel::{QueryDsl, RunQueryDsl};
-use crate::{app::routes::lobby, models};
+use diesel::prelude::*;
+use uuid::Uuid;
+use crate::{app::routes::lobby, models, schema};
 
 use super::DbExecutor;
 
+/* -------------------------------------------------------------------------- */
+/*                               GET LOBBY LIST                               */
+/* -------------------------------------------------------------------------- */
 pub struct GetLobbyList;
 
 impl Message for GetLobbyList {
@@ -37,6 +42,47 @@ impl Handler<GetLobbyList> for DbExecutor {
                 error!("Error on get database connection from DbExecutor.0");
                 error!("{}", e);
                 Err(())
+            }
+        }
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               GET LOBBY DATA                               */
+/* -------------------------------------------------------------------------- */
+
+pub struct GetLobby(pub Uuid);
+
+impl Message for GetLobby {
+    type Result = Option<models::lobby::Lobby>;
+}
+
+impl Handler<GetLobby> for DbExecutor {
+    type Result = Option<models::lobby::Lobby>;
+
+    fn handle(&mut self, msg: GetLobby, ctx: &mut Self::Context) -> Self::Result {
+        use crate::schema::lobbys::dsl::*;
+
+        let conn = self.0.get();
+
+        match conn {
+            Ok(a) => {
+                
+                match lobbys.filter(schema::lobbys::id.eq(msg.0)).first::<models::lobby::Lobby>(&a) {
+                    Ok(lobby) => {
+                        Some(lobby)
+                    },
+                    Err(e) => {
+                        error!("Error on get list of lobbies");
+                        error!("{}", e);
+                        None
+                    }
+                }
+            },
+            Err(e) => {
+                error!("Error on get database connection from DbExecutor.0");
+                error!("{}", e);
+                None
             }
         }
     }

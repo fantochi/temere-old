@@ -51,6 +51,11 @@ impl Actor for Client {
             })
             .wait(ctx)
     }
+    fn stopping(&mut self, ctx: &mut Self::Context) -> actix::Running {
+        self.lobby_addr.do_send(server::lobby::Disconnect(self.fingerprint.clone()));
+
+        actix::Running::Stop
+    }
 }
 
 impl Client {
