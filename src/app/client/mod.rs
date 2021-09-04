@@ -13,8 +13,6 @@ use super::ClientMessage;
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-// Use fingerprint to get websocket conn example: 6f53480fe064ff8f6f037df0c65e6fd7
-// TODO: Create method to parse and verify if finger print is valid
 pub struct Client {
     fingerprint: String,
     lobby_addr: Addr<server::lobby::Lobby>,
@@ -95,7 +93,7 @@ impl Client {
             if Instant::now().duration_since(act.heart_beat) > CLIENT_TIMEOUT {
                 // if let Some(chat_addr) = act.chat_addr.clone() {
                 //     // TODO: Make Timeout Message
-                //     act.lobby_addr.do_send(Disconnect { id: act.id });
+                //     act.lobby_addr.do_send(server::lobby::Disconnect(act.fingerprint.clone()));
                 // };
                 ctx.stop();
                 return;

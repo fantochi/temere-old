@@ -23,10 +23,7 @@ async fn main() -> std::io::Result<()> {
 
     let database_pool = database::new_pool().unwrap();
     let database = SyncArbiter::start(1, move | | {database::DbExecutor::new(database_pool.clone())});
-    let server = app::server::Server::new().start();
-    let _ = server.send(app::server::LoadLobbies(database.clone())).await;
-
-    //cron(server.clone(),database.clone());
+    let server = app::server::Server::new(database.clone()).start();
 
     HttpServer::new(move || {
         let state = app::AppState {
@@ -55,12 +52,3 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
-
-// TODO: This not wokr
-// async fn cron(server_addr: Addr<app::server::Server>, database_addr: Addr<database::DbExecutor>) {
-//     loop{
-//         info!("TO AQUIIII");
-//         server_addr.do_send(app::server::LoadLobbies(database_addr.clone()));
-//         actix_rt::time::sleep(std::time::Duration::from_secs(5)).await
-//     }
-// }

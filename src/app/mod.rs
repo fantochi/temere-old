@@ -14,7 +14,7 @@ pub struct AppState {
     pub server: Addr<server::Server>
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ClientMessage {
     pub fingerprint: String,
     pub event: String,

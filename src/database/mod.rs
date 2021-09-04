@@ -1,4 +1,6 @@
 pub mod lobby;
+pub mod session;
+pub mod chat;
 
 use actix::prelude::{Actor, SyncContext};
 use diesel::{

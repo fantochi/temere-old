@@ -22,7 +22,9 @@ diesel = { version = "1.4.7", features = [
     "r2d2",
     "uuidv07",
     "serde_json",
+    "network-address",
 ] }
+ipnetwork = "0.18.0"
 num_cpus = "1.13.0"
 chrono = "0.4.19"
 actix-rt = "2.2.0"

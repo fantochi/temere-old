@@ -55,24 +55,32 @@ pub async fn join(
     let state = state.get_ref().clone();
     let data = data.clone();
 
-    let chat_id = data.0.parse::<Uuid>();
+    let lobby_id = data.0.parse::<Uuid>();
     let fingerprint = data.1;
     
-    if let Err(_) = chat_id {
+    if let Err(_) = lobby_id {
         return Err(actix_web::error::ErrorBadRequest("invalid lobby id!"));
     }
 
-    let chat_id = chat_id.unwrap();
+    let lobby_id = lobby_id.unwrap();
 
     let lobby_addr = state.server.send(server::GetLobbyAddr {
-        id: chat_id.clone()
+        id: lobby_id.clone()
     }).await.unwrap();
 
     match lobby_addr {
         None => return Err(actix_web::error::ErrorBadRequest("Lobby id not exists!")),
         Some(addr) => {
-            let client = client::Client::new(fingerprint, addr);
+            let client = client::Client::new(fingerprint.clone(), addr);
             let resp = actix_web_actors::ws::start(client, &req, stream)?;
+
+            if let Some(val) = req.peer_addr() {
+                state.database.do_send(database::session::RegisterSession {
+                    fingerprint: fingerprint.clone(),
+                    ip_address: ipnetwork::IpNetwork::from(val.ip())
+                });
+            };
+            
 
             return Ok(resp);
         }

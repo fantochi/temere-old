@@ -10,19 +10,35 @@ use uuid::Uuid;
 use crate::database::{self, DbExecutor};
 
 pub struct Server {
+    db_executor: Addr<DbExecutor>,
     lobbys: HashMap<Uuid, Addr<lobby::Lobby>>
 }
 
 impl Server {
-    pub fn new() -> Self {
+    pub fn new(db_executor: Addr<DbExecutor>) -> Self {
         Self {
+            db_executor,
             lobbys: HashMap::new()
         }
     }
 }
 
 impl Actor for Server {
-    type Context = Context<Self>;    
+    type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        self.db_executor.send(database::lobby::GetLobbyList)
+            .into_actor(self)
+            .then(|res, server, _ctx| {
+                if let Ok(Ok(list)) = res {
+                    for lobby in list {
+                        server.lobbys.insert(lobby.id.clone(), lobby::Lobby::new(lobby.id.clone(), server.db_executor.clone()).start());
+                    }          
+                }
+                fut::ready(())
+            })
+            .wait(ctx);
+    }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -51,38 +67,3 @@ impl Handler<GetLobbyAddr> for Server {
         }
     }
 }
-
-// Scan lobbies from database
-// TODO: Make thread to periodical scan, to open or close lobbies according to the database
-pub struct LoadLobbies(pub Addr<DbExecutor>);
-
-impl Message for LoadLobbies {
-    type Result = ();    
-}
-
-impl Handler<LoadLobbies> for Server {
-    type Result = ();
-
-    fn handle(&mut self, msg: LoadLobbies, ctx: &mut Self::Context) -> Self::Result {
-        info!("Loading lobbies...");
-        let db_executor = msg.0.clone();        
-        db_executor.send(database::lobby::GetLobbyList)
-            .into_actor(self)
-            .then(|res, server, _ctx| {
-                if let Ok(Ok(list)) = res {
-                    for lobby in list {
-                        if let Some(lb) = server.lobbys.get_mut(&lobby.id) {
-                            lb.do_send(lobby::Enabled(lobby.enabled));
-                        } else {
-                            server.lobbys.insert(lobby.id, lobby::Lobby::new(lobby.enabled).start());
-                        }
-                    }          
-                }
-                fut::ready(())
-            })
-            .wait(ctx);
-
-        info!("Lobbies OK!");
-    }
-}
-

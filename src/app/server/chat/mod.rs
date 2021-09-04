@@ -6,16 +6,20 @@ use actix::{ContextFutureSpawner, WrapFuture};
 use uuid::Uuid;
 
 use crate::app::{ClientMessage, client::Client};
+use crate::database::DbExecutor;
+use crate::models;
 
 pub struct Chat {
     pub id: Uuid,
+    pub db_executor: Addr<DbExecutor>,
     members: HashMap<String, Addr<Client>>,
 }
 
 impl Chat {
-    pub fn new() -> Self {
+    pub fn new(chat_model: models::chat::Chat, db_executor: Addr<DbExecutor>,) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Uuid::default(),
+            db_executor,
             members: HashMap::new()
         }
     }

@@ -2,7 +2,7 @@ use actix::{Handler, Message};
 use diesel::{QueryDsl, RunQueryDsl};
 use diesel::prelude::*;
 use uuid::Uuid;
-use crate::{app::routes::lobby, models, schema};
+use crate::{models, schema};
 
 use super::DbExecutor;
 

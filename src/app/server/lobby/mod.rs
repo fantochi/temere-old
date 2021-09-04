@@ -1,17 +1,20 @@
 mod session;
 
 use std::collections::{HashMap, HashSet};
-use actix::{Actor, Addr, Context, Handler, Message};
+use actix::{Actor, Addr, AsyncContext, Handler, Message, StreamHandler};
+use actix::{fut, ActorContext, ActorFuture, Context};
+use actix::{ContextFutureSpawner, WrapFuture};
 use uuid::Uuid;
 
-use crate::app::{ClientMessage, client::Client};
+use crate::{app::{ClientMessage, client::Client}, database::{self, DbExecutor}, models};
 
-use self::session::{Session, SessionState};
+use self::session::Session;
 
 use super::chat::Chat;
 
 pub struct Lobby {
-    enabled: bool,
+    id: Uuid,
+    db_executor: Addr<DbExecutor>,
     chats: HashMap<Uuid, Addr<Chat>>,
     sessions: HashMap<String, session::Session>
 }
@@ -21,88 +24,103 @@ impl Actor for Lobby {
 }
 
 impl Lobby {
-    pub fn new(enabled: bool) -> Self {
+    pub fn new(lobby_id: Uuid, db_executor: Addr<DbExecutor>) -> Self {
         Self {
-            enabled,
+            id: lobby_id,
+            db_executor,
             chats: HashMap::new(),
             sessions: HashMap::new()
         }
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                   ACTIONS                                  */
-/* -------------------------------------------------------------------------- */
 
-// Client message handler
+/* -------------------------------------------------------------------------- */
+/*                           CLIENTE MESSAGE HANDLER                          */
+/* -------------------------------------------------------------------------- */
 impl Handler<ClientMessage> for Lobby {
     type Result = ();
 
-    fn handle(&mut self, msg: ClientMessage, _ctx: &mut Self::Context) -> Self::Result {
-
-        if self.enabled.clone() == false {
-            for (fingerprint, session) in self.sessions.iter() {
-                session.get_addr().do_send(ClientMessage { fingerprint: fingerprint.clone(), event: String::from("lobby-closed"), data: json!({}) });
-            }
-            return;
-        }
-
+    fn handle(&mut self, msg: ClientMessage, ctx: &mut Self::Context) -> Self::Result {
         // Message Events
-        match msg.event.as_str() {
+        match msg.clone().event.as_str() {
             "look" => {
-                // TODO: Ignore if myself aready looking
-                // TODO: Add 5 recent clients and blocked clients
                 let blacklist: HashSet<String> = HashSet::new();
+                // Try find other user to make chat
+                for (other_user_fingerprint, other_user_session) in self.sessions.clone() {
 
-                for (fingerprint, session) in self.sessions.clone() {
-
-                    if let Some(_) = blacklist.get(&fingerprint) {
+                    if other_user_fingerprint == msg.fingerprint.clone() {
                         continue;
                     }
 
-                    if fingerprint == msg.fingerprint {
+                    if let Some(_) = blacklist.get(&other_user_fingerprint) {
                         continue;
-                    }
+                    }                    
 
-                    match session.get_state() {
+                    match other_user_session.get_state() {
                         session::SessionState::Looking => {
-                            let mut new_chat = Chat::new();
-                            
-                            match self.sessions.get_mut(&fingerprint) {
-                                Some(other_user_session) => {
-                                    match other_user_session.get_state() { 
-                                        
-                                        SessionState::Looking => {
-                                            other_user_session.set_state(SessionState::InChat(new_chat.id));
-                                            new_chat.add_member(fingerprint.clone(), other_user_session.get_addr());
 
-                                            let my_self_session = self.sessions.get_mut(&msg.fingerprint).unwrap(); 
-                                            my_self_session.set_state(SessionState::InChat(new_chat.id));
-                                            new_chat.add_member(msg.fingerprint.clone(), my_self_session.get_addr());
-                                            
+                            self.db_executor
+                                .send(database::chat::RegisterChat(self.id.clone()))
+                                .into_actor(self)
+                                .then( move |res, server, ctx| {
+                                    match res {
+                                        Ok(res) => {
+                                            let chat_model = res.unwrap();
+                                            let mut new_chat = Chat::new(chat_model, server.db_executor.clone());
+                                            let lock_session = server.sessions.get_mut(&other_user_fingerprint);
 
-                                            self.chats.insert(new_chat.id.clone(), new_chat.start());
-                                            return;
+                                            match lock_session {
+                                                Some(mut_other_user_session) => {
+                                                    mut_other_user_session.set_state(session::SessionState::InChat(new_chat.id));
+                                                    new_chat.add_member(other_user_fingerprint.clone(), other_user_session.get_addr());
+
+                                                    let my_self_session = server.sessions.get_mut(&msg.fingerprint).unwrap(); 
+                                                    my_self_session.set_state(session::SessionState::InChat(new_chat.id));
+                                                    new_chat.add_member(msg.fingerprint.clone(), my_self_session.get_addr());
+
+                                                    server.chats.insert(new_chat.id.clone(), new_chat.start());
+                                                },
+                                                None => ()
+                                            };
                                         },
-                                        _=> continue
+                                        Err(e) => ()
                                     }
-                                },
-                                None => continue
-                            };
+                                    fut::ready(())
+                                })
+                                .wait(ctx);
+                            return;
                         },
                         _ => ()
                     }
                 }
 
-                let my_self_session = self.sessions.get_mut(&msg.fingerprint).unwrap(); 
-                my_self_session.set_state(SessionState::Looking);
+                self.sessions.clone().iter().for_each(|(a, c)| {
+
+                    println!("{:#?}", a);
+                });
+
+                let my_self_session = self.sessions.get_mut(&msg.fingerprint);
+
+                if let Some(mut_session) = my_self_session {
+                    match mut_session.get_state() {
+                        session::SessionState::Waiting => {
+                            mut_session.set_state(session::SessionState::Looking);
+                            mut_session.get_addr().do_send(ClientMessage { fingerprint: msg.fingerprint.clone(), event: "looking".to_string(), data: serde_json::Value::default() });
+                        },
+                        _ => ()
+                    }
+                }                
             },
-            _ => warn!("Invalid Message, {:#?}", msg)           
+            _ => warn!(target: "Lobby", "ClientMessage Handler -> Invalid Command: {:#?}", msg)           
         };
     }
 }
 
-// Connect Client for Register Session
+
+/* -------------------------------------------------------------------------- */
+/*                   HANDLER TO STORE USER SESSION ON LOBBY                   */
+/* -------------------------------------------------------------------------- */
 pub struct Connect {
     pub fingerprint: String,
     pub conn_addr: Addr<Client>
@@ -116,11 +134,6 @@ impl Handler<Connect> for Lobby {
     type Result = Result<(), ()>;
     
     fn handle(&mut self, msg: Connect, _: &mut Self::Context) -> Self::Result {
-
-        if self.enabled == false {
-            return Err(());
-        }
-
         match self.sessions.insert(msg.fingerprint, Session::new(msg.conn_addr)) {
             Some(_) => Err(()),
             None => Ok(())
@@ -128,7 +141,9 @@ impl Handler<Connect> for Lobby {
     }
 }
 
-// Disconnect Session
+/* -------------------------------------------------------------------------- */
+/*                  HANDLER TO REMOVE USER SESSION FROM LOBBY                 */
+/* -------------------------------------------------------------------------- */
 pub struct Disconnect(pub String);
 
 impl Message for Disconnect {
@@ -141,31 +156,8 @@ impl Handler<Disconnect> for Lobby {
     fn handle(&mut self, msg: Disconnect, ctx: &mut Self::Context) -> Self::Result {
         info!("User disconnected: {}", msg.0.clone());
         match self.sessions.remove_entry(&msg.0) {
-            Some(session) => {
-                info!("Usuario retirado da lista de sessoes!")
-            },
+            Some(session) => (),
             _ => ()
-        }
-    }
-}
-
-// Enabled server or no;
-pub struct Enabled(pub bool);
-
-impl Message for Enabled {
-    type Result = ();
-}
-
-impl Handler<Enabled> for Lobby {
-    type Result = ();
-
-    fn handle(&mut self, msg: Enabled, _ctx: &mut Self::Context) -> Self::Result {
-        self.enabled = msg.0;
-
-        if msg.0 == false {
-            for (fingerprint, session) in self.sessions.iter() {
-                session.get_addr().do_send(ClientMessage { fingerprint: fingerprint.clone(), event: String::from("lobby-closed"), data: json!({}) });
-            }
         }
     }
 }
