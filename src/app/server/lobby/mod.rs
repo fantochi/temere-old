@@ -23,10 +23,16 @@ impl Actor for Lobby {
     type Context = Context<Self>;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                    LOBBY                                   */
+/* -------------------------------------------------------------------------- */
+
+// TODO: Adicionar descriCão das responsabilidades do Lobby
+
 impl Lobby {
-    pub fn new(lobby_id: Uuid, db_executor: Addr<DbExecutor>) -> Self {
+    pub fn new(lobby_model: models::lobby::Lobby, db_executor: Addr<DbExecutor>) -> Self {
         Self {
-            id: lobby_id,
+            id: lobby_model.id.clone(),
             db_executor,
             chats: HashMap::new(),
             sessions: HashMap::new()
@@ -35,9 +41,7 @@ impl Lobby {
 }
 
 
-/* -------------------------------------------------------------------------- */
-/*                           CLIENTE MESSAGE HANDLER                          */
-/* -------------------------------------------------------------------------- */
+/* --------------------- HANDLER TO PARSE CLIENT MESSAGE -------------------- */
 impl Handler<ClientMessage> for Lobby {
     type Result = ();
 
@@ -112,15 +116,14 @@ impl Handler<ClientMessage> for Lobby {
                     }
                 }                
             },
-            _ => warn!(target: "Lobby", "ClientMessage Handler -> Invalid Command: {:#?}", msg)           
+            _ => warn!(target: "Lobby", "ClientMessage Handler -> Invalid Command: \n{:#?}", msg)           
         };
     }
 }
 
 
-/* -------------------------------------------------------------------------- */
-/*                   HANDLER TO STORE USER SESSION ON LOBBY                   */
-/* -------------------------------------------------------------------------- */
+
+/* ----------------- HANDLER TO STORE USER SESSION ON LOBBY ----------------- */
 pub struct Connect {
     pub fingerprint: String,
     pub conn_addr: Addr<Client>
@@ -141,9 +144,8 @@ impl Handler<Connect> for Lobby {
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/*                  HANDLER TO REMOVE USER SESSION FROM LOBBY                 */
-/* -------------------------------------------------------------------------- */
+
+/* ---------------- HANDLER TO DISCONECT USER SESSION FROM LOBBY --------------- */
 pub struct Disconnect(pub String);
 
 impl Message for Disconnect {
@@ -154,6 +156,8 @@ impl Handler<Disconnect> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: Disconnect, ctx: &mut Self::Context) -> Self::Result {
+        //TODO: Add message to chat if user session == SessionState::inChat(chat_id)
+
         info!("User disconnected: {}", msg.0.clone());
         match self.sessions.remove_entry(&msg.0) {
             Some(session) => (),

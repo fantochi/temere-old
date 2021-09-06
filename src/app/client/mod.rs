@@ -1,17 +1,19 @@
 use std::time::Duration;
 
 use actix::clock::Instant;
-use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
+use actix::{Actor, Addr, AsyncContext, Handler, Message, StreamHandler};
 use actix::{fut, ActorContext, ActorFuture};
 use actix::{ContextFutureSpawner, WrapFuture};
 use actix_web_actors::ws::{self, Message::Text};
 use serde_json::Value;
+use uuid::Uuid;
 
 use super::server;
 use super::ClientMessage;
 
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
-const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
+const CLIENT_ALERT_TIMEOUT: Duration = Duration::from_secs(3);
+const CLIENT_DISCONECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct Client {
     fingerprint: String,
@@ -49,11 +51,6 @@ impl Actor for Client {
             })
             .wait(ctx)
     }
-    fn stopping(&mut self, ctx: &mut Self::Context) -> actix::Running {
-        self.lobby_addr.do_send(server::lobby::Disconnect(self.fingerprint.clone()));
-
-        actix::Running::Stop
-    }
 }
 
 impl Client {
@@ -90,13 +87,18 @@ impl Client {
 
     fn heart_beat(&self, ctx: &mut ws::WebsocketContext<Self>) {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
-            if Instant::now().duration_since(act.heart_beat) > CLIENT_TIMEOUT {
-                // if let Some(chat_addr) = act.chat_addr.clone() {
-                //     // TODO: Make Timeout Message
-                //     act.lobby_addr.do_send(server::lobby::Disconnect(act.fingerprint.clone()));
-                // };
+
+            if Instant::now().duration_since(act.heart_beat) > CLIENT_DISCONECT_TIMEOUT {
+                act.lobby_addr.do_send(server::lobby::Disconnect(act.fingerprint.clone()));
                 ctx.stop();
                 return;
+            } 
+            else if Instant::now().duration_since(act.heart_beat) > CLIENT_ALERT_TIMEOUT {
+                
+                println!("{:?}", Instant::now().duration_since(act.heart_beat));
+                if let Some(chat_addr) = act.chat_addr.clone() {
+                    chat_addr.do_send(server::chat::Timeout(act.fingerprint.clone()));
+                }
             }
             ctx.ping(b"PING");
         });
@@ -154,5 +156,20 @@ impl Handler<ClientMessage> for Client {
 
     fn handle(&mut self, msg: ClientMessage, ctx: &mut Self::Context) -> Self::Result {
         ctx.text(json!(msg).to_string()) 
+    }
+}
+
+pub struct Joined(pub Addr<server::chat::Chat>);
+
+impl Message for Joined {
+    type Result = ();
+}
+
+impl Handler<Joined> for Client {
+    type Result = ();
+
+    fn handle(&mut self, msg: Joined, ctx: &mut Self::Context) -> Self::Result {
+        self.chat_addr = Some(msg.0.clone());
+        ctx.text(self.client_event_message("joined", None));
     }
 }
