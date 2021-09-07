@@ -6,10 +6,10 @@ use actix::{fut, ActorContext, ActorFuture, Context};
 use actix::{ContextFutureSpawner, WrapFuture};
 use uuid::Uuid;
 
+use crate::app::server::chat;
 use crate::{app::{ClientMessage, client::Client}, database::{self, DbExecutor}, models};
 
 use self::session::Session;
-
 use super::chat::Chat;
 
 pub struct Lobby {
@@ -158,9 +158,36 @@ impl Handler<Disconnect> for Lobby {
     fn handle(&mut self, msg: Disconnect, ctx: &mut Self::Context) -> Self::Result {
         //TODO: Add message to chat if user session == SessionState::inChat(chat_id)
 
-        info!("User disconnected: {}", msg.0.clone());
+        info!("{} foi desconectado do lobby", msg.0.clone());
         match self.sessions.remove_entry(&msg.0) {
-            Some(session) => (),
+            Some((fingerprint, session)) => {
+                match session.get_state() {
+                    session::SessionState::InChat(chat_id) => {
+                        if let Some(chat_addr) = self.chats.get(&chat_id) {
+                            chat_addr.do_send(chat::Disconnect(fingerprint));            
+                        }
+                    },
+                    _ => ()
+                }
+            },
+            _ => ()
+        }
+    }
+}
+
+/* --------------------- HANDLER TO CHANGE SESSION STATE -------------------- */
+pub struct ChatDisconnect(pub String);
+
+impl Message for ChatDisconnect {
+    type Result = ();
+}
+
+impl Handler<ChatDisconnect> for Lobby {
+    type Result = ();
+
+    fn handle(&mut self, msg: ChatDisconnect, ctx: &mut Self::Context) -> Self::Result {
+        match self.sessions.get_mut(&msg.0) {
+            Some(session) => session.set_state(session::SessionState::Waiting),
             _ => ()
         }
     }

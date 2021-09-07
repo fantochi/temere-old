@@ -6,7 +6,8 @@ use actix::{fut, ActorContext, ActorFuture};
 use actix::{ContextFutureSpawner, WrapFuture};
 use actix_web_actors::ws::{self, Message::Text};
 use serde_json::Value;
-use uuid::Uuid;
+
+use crate::app::server::lobby;
 
 use super::server;
 use super::ClientMessage;
@@ -94,8 +95,6 @@ impl Client {
                 return;
             } 
             else if Instant::now().duration_since(act.heart_beat) > CLIENT_ALERT_TIMEOUT {
-                
-                println!("{:?}", Instant::now().duration_since(act.heart_beat));
                 if let Some(chat_addr) = act.chat_addr.clone() {
                     chat_addr.do_send(server::chat::Timeout(act.fingerprint.clone()));
                 }
@@ -119,6 +118,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for Client {
             Ok(ws::Message::Close(reason)) => {
                 ctx.close(reason);
                 ctx.stop();
+                self.lobby_addr.do_send(server::lobby::Disconnect(self.fingerprint.clone()));
             }
             Ok(ws::Message::Continuation(_)) => {
                 ctx.stop();
@@ -155,6 +155,15 @@ impl Handler<ClientMessage> for Client {
     type Result = ();
 
     fn handle(&mut self, msg: ClientMessage, ctx: &mut Self::Context) -> Self::Result {
+
+        match msg.clone().event.as_str() {
+            "exited" => {
+                self.lobby_addr.do_send(lobby::ChatDisconnect(self.fingerprint.clone()));
+                self.chat_addr = None
+            },
+            _ => ()
+        }
+
         ctx.text(json!(msg).to_string()) 
     }
 }

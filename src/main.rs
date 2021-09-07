@@ -45,7 +45,7 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(|| HttpResponse::Ok()))
             .configure(app::routes::config)
             .app_data(Data::new(state.clone()))
-            .wrap(actix_web::middleware::Logger::default())
+            //.wrap(actix_web::middleware::Logger::default())
             .wrap(cors)
     })
     .bind("192.168.50.219:8080")?

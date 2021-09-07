@@ -1,5 +1,6 @@
 use actix::{Handler, Message};
-use diesel::{RunQueryDsl, Table};
+use chrono::Utc;
+use diesel::{RunQueryDsl, Table, query_dsl};
 use diesel::prelude::*;
 use uuid::Uuid;
 
@@ -27,5 +28,38 @@ impl Handler<RegisterChat> for DbExecutor {
             .values(lobby_id.eq(msg.0.clone()));
         
         query.get_result::<models::chat::Chat>(&connection)
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                           UPDATE CHAT ON DATABASE                          */
+/* -------------------------------------------------------------------------- */
+pub struct CloseChat{
+    pub chat_id: Uuid,
+    pub message_counter: i32
+}
+
+impl Message for CloseChat {
+    type Result = ();
+}
+
+impl Handler<CloseChat> for DbExecutor {
+    type Result = ();
+
+    fn handle(&mut self, msg: CloseChat, ctx: &mut Self::Context) -> Self::Result {
+        use schema::chats::dsl::*;
+
+        let connection = self.0.get().unwrap();
+        let now = Utc::now().naive_local();
+
+        let target = chats.filter(id.eq(msg.chat_id.clone()));
+
+        let query = diesel::update(target).set(models::chat::ChatUpdate {
+            message_counter: msg.message_counter,
+            status: "closed".to_string(),
+            updated_at: now
+        });
+
+        query.execute(&connection);
     }
 }
