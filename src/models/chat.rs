@@ -10,13 +10,20 @@ pub struct Chat {
     pub message_counter: i32,
     pub status: String,
     pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime
+    pub updated_at: NaiveDateTime,
+}
+
+#[derive(Debug, Insertable)]
+#[table_name = "chats"]
+pub struct NewChat {
+    pub lobby_id: Uuid,
+    pub status: String,
 }
 
 #[derive(Debug, AsChangeset)]
 #[table_name = "chats"]
-pub struct ChatUpdate {
+pub struct UpdateChat {
     pub message_counter: i32,
     pub status: String,
-    pub updated_at: NaiveDateTime
+    pub updated_at: NaiveDateTime,
 }

@@ -1,4 +1,0 @@
-CREATE TABLE users (
-    id VARCHAR(255) PRIMARY KEY,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);

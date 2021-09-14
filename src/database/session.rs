@@ -1,10 +1,10 @@
+use actix::{Handler, Message};
 use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
-use actix::{Handler, Message};
 use diesel::QueryDsl;
 
-use crate::{database::session, models, schema};
 use super::DbExecutor;
+use crate::{database::session, models, schema};
 
 /* -------------------------------------------------------------------------- */
 /*                          GET SESSION FROM DATABASE                         */
@@ -12,7 +12,7 @@ use super::DbExecutor;
 pub struct GetSession(pub String);
 
 impl Message for GetSession {
-    type Result = Option<models::session::Session>;    
+    type Result = Option<models::session::Session>;
 }
 
 impl Handler<GetSession> for DbExecutor {
@@ -42,11 +42,11 @@ impl Handler<GetSession> for DbExecutor {
 
 pub struct RegisterSession {
     pub fingerprint: String,
-    pub ip_address: ipnetwork::IpNetwork
+    pub ip_address: ipnetwork::IpNetwork,
 }
 
 impl Message for RegisterSession {
-    type Result = ();    
+    type Result = ();
 }
 
 impl Handler<RegisterSession> for DbExecutor {
@@ -63,17 +63,16 @@ impl Handler<RegisterSession> for DbExecutor {
         let query = diesel::insert_into(sessions)
             .values(models::session::NewSession {
                 id: msg.fingerprint,
-                address: msg.ip_address
+                address: msg.ip_address,
             })
             .on_conflict(id)
-            .do_update()
-            .set(last_connection.eq(now));
+            .do_nothing();
 
         let result = query.execute(&connection);
 
         match result {
             Ok(_) => debug!("New session has been registered/updated on database"),
-            Err(e) => error!("Error on register/update session on database: {}", e)
+            Err(e) => error!("Error on register/update session on database: {}", e),
         }
     }
 }

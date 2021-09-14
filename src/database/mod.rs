@@ -1,6 +1,10 @@
-pub mod lobby;
-pub mod session;
-pub mod chat;
+mod chat;
+mod lobby;
+mod session;
+
+pub use chat::{CloseChat, RegisterChat};
+pub use lobby::{GetLobby, GetLobbyList};
+pub use session::{GetSession, RegisterSession};
 
 use actix::prelude::{Actor, SyncContext};
 use diesel::{
@@ -35,7 +39,7 @@ pub fn new_pool() -> Result<PgPool, ()> {
     let pool = r2d2::Pool::builder().build(manager);
 
     match pool {
-        Ok(p) =>  Ok(p),
-        Err(e) => Err(())       
+        Ok(p) => Ok(p),
+        Err(e) => Err(()),
     }
 }

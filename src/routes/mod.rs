@@ -1,6 +1,6 @@
 pub mod lobby;
 
-use actix_web::{web, middleware, App, HttpResponse};
+use actix_web::{middleware, web, App, HttpResponse};
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     info!("Routes config called");
