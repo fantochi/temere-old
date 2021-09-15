@@ -18,10 +18,26 @@ use actix_web::{
     web::{self, Data},
     App, HttpResponse, HttpServer,
 };
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
+
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+
+    builder
+        .set_private_key_file(
+            std::env::var("SSL_KEY_PATH").expect("SSL_KEY_PATH must be set"),
+            SslFiletype::PEM,
+        )
+        .unwrap();
+
+    builder
+        .set_certificate_chain_file(
+            std::env::var("SSL_CERT_PATH").expect("SSL_CERT_PATH must be set"),
+        )
+        .unwrap();
 
     std::env::set_var("RUST_LOG", "info");
     env_logger::init();
@@ -51,7 +67,7 @@ async fn main() -> std::io::Result<()> {
             //.wrap(actix_web::middleware::Logger::default())
             .wrap(cors)
     })
-    .bind("192.168.50.219:8080")?
+    .bind_openssl("51.79.89.192:8080", builder)?
     .run()
     .await
 }
