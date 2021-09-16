@@ -67,7 +67,7 @@ async fn main() -> std::io::Result<()> {
             //.wrap(actix_web::middleware::Logger::default())
             .wrap(cors)
     })
-    .bind_openssl("51.79.89.192:8080", builder)?
+    .bind_openssl("51.79.25.227:8080", builder)?
     .run()
     .await
 }
